@@ -13,27 +13,26 @@ def generate_video_from_text(prompt):
     """텍스트 프롬프트로부터 영상을 생성하는 함수"""
     try:
         headers = {
-            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}",
-            "Content-Type": "application/json"
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}"
         }
         
         payload = {
             "prompt": prompt,
-            "mode": "text", 
-            "num_frames": 60,
+            "num_frames_per_video": 60,
             "fps": 30,
-            "model_type": "gen-2"  # Gen-2 모델 사용
         }
         
         # 영상 생성 요청
         response = requests.post(
-            "https://api.runwayml.com/v1/generation/video",
+            "https://api.runwayml.com/v1/inference/runway/gen-3/text-to-video",
             headers=headers,
             json=payload
         )
         
         if response.status_code == 200:
-            video_url = response.json().get('video_url')
+            video_url = response.json().get('artifacts')[0].get('url')
             # 생성된 영상 다운로드
             video_response = requests.get(video_url)
             return video_response.content
@@ -55,28 +54,27 @@ def generate_video_from_image_and_text(image, prompt):
         base64_image = base64.b64encode(img_byte_arr).decode('utf-8')
         
         headers = {
-            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}",
-            "Content-Type": "application/json"
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}"
         }
         
         payload = {
             "prompt": prompt,
-            "image": base64_image,
-            "mode": "image",
-            "num_frames": 60,
+            "image": f"data:image/png;base64,{base64_image}",
+            "num_frames_per_video": 60,
             "fps": 30,
-            "model_type": "gen-2"  # Gen-2 모델 사용
         }
         
         # 영상 생성 요청
         response = requests.post(
-            "https://api.runwayml.com/v1/generation/video",
+            "https://api.runwayml.com/v1/inference/runway/gen-3/image-to-video",
             headers=headers,
             json=payload
         )
         
         if response.status_code == 200:
-            video_url = response.json().get('video_url')
+            video_url = response.json().get('artifacts')[0].get('url')
             # 생성된 영상 다운로드
             video_response = requests.get(video_url)
             return video_response.content
