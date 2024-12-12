@@ -27,7 +27,7 @@ def generate_video_from_text(prompt):
         
         # 영상 생성 요청
         response = requests.post(
-            "https://api.runway.ai/v2/text2video",
+            "https://api.runwayml.com/v2/text2video",
             headers=headers,
             json=payload
         )
@@ -74,7 +74,7 @@ def generate_video_from_image_and_text(image, prompt):
         
         # 영상 생성 요청
         response = requests.post(
-            "https://api.runway.ai/v2/image2video",
+            "https://api.runwayml.com/v2/image2video",
             headers=headers,
             json=payload
         )
