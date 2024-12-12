@@ -5,6 +5,7 @@ from PIL import Image
 import io
 import base64
 from datetime import datetime
+from runwayml import RunwayML
 
 # Streamlit 페이지 설정
 st.set_page_config(page_title="Video Generation Chatbot", layout="wide")
@@ -12,33 +13,26 @@ st.set_page_config(page_title="Video Generation Chatbot", layout="wide")
 def generate_video_from_text(prompt):
     """텍스트 프롬프트로부터 영상을 생성하는 함수"""
     try:
-        headers = {
-            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}",
-            "Content-Type": "application/json",
-        }
+        # RunwayML 클라이언트 초기화
+        client = RunwayML(api_key=st.secrets['RUNWAY_API_KEY'])
         
-        payload = {
-            "input": {
-                "prompt": prompt,
-                "num_frames": 60,
-                "fps": 30,
-            }
-        }
-        
-        # 영상 생성 요청
-        response = requests.post(
-            "https://api.runwayml.com/v3/text/to/video",
-            headers=headers,
-            json=payload
+        # 텍스트 투 비디오 태스크 생성
+        task = client.text_to_video.create(
+            model='gen3a_turbo',
+            prompt=prompt,
+            num_frames=60,
+            fps=30
         )
         
-        if response.status_code == 200:
-            video_url = response.json().get('video_url')
+        # 태스크 완료 대기 및 결과 받기
+        result = task.wait_for_completion()
+        if result.status == 'completed':
+            video_url = result.output['video']
             # 생성된 영상 다운로드
             video_response = requests.get(video_url)
             return video_response.content
         else:
-            st.error(f"Error: {response.status_code} - {response.text}")
+            st.error(f"Error: {result.status} - {result.error}")
             return None
             
     except Exception as e:
@@ -48,40 +42,32 @@ def generate_video_from_text(prompt):
 def generate_video_from_image_and_text(image, prompt):
     """이미지와 텍스트로부터 영상을 생성하는 함수"""
     try:
-        # 이미지를 base64로 인코딩
+        # 이미지를 임시로 저장
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
-        img_byte_arr = img_byte_arr.getvalue()
-        base64_image = base64.b64encode(img_byte_arr).decode('utf-8')
+        img_byte_arr.seek(0)
         
-        headers = {
-            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}",
-            "Content-Type": "application/json",
-        }
+        # RunwayML 클라이언트 초기화
+        client = RunwayML(api_key=st.secrets['RUNWAY_API_KEY'])
         
-        payload = {
-            "input": {
-                "image": f"data:image/png;base64,{base64_image}",
-                "prompt": prompt,
-                "num_frames": 60,
-                "fps": 30,
-            }
-        }
-        
-        # 영상 생성 요청
-        response = requests.post(
-            "https://api.runwayml.com/v3/image/to/video",
-            headers=headers,
-            json=payload
+        # 이미지 투 비디오 태스크 생성
+        task = client.image_to_video.create(
+            model='gen3a_turbo',
+            prompt_image=img_byte_arr,
+            prompt_text=prompt,
+            num_frames=60,
+            fps=30
         )
         
-        if response.status_code == 200:
-            video_url = response.json().get('video_url')
+        # 태스크 완료 대기 및 결과 받기
+        result = task.wait_for_completion()
+        if result.status == 'completed':
+            video_url = result.output['video']
             # 생성된 영상 다운로드
             video_response = requests.get(video_url)
             return video_response.content
         else:
-            st.error(f"Error: {response.status_code} - {response.text}")
+            st.error(f"Error: {result.status} - {result.error}")
             return None
             
     except Exception as e:
@@ -90,6 +76,9 @@ def generate_video_from_image_and_text(image, prompt):
 
 # Streamlit UI
 st.title("Video Generation Chatbot")
+
+# requirements.txt에 추가해야 할 내용을 알림
+st.info("이 앱을 실행하기 위해서는 requirements.txt에 runwayml 패키지를 추가해야 합니다.")
 
 # 탭 생성
 tab1, tab2 = st.tabs(["텍스트로 영상 생성", "이미지와 텍스트로 영상 생성"])
@@ -104,7 +93,6 @@ with tab1:
             with st.spinner("영상을 생성하고 있습니다..."):
                 video_data = generate_video_from_text(text_prompt)
                 if video_data:
-                    # 생성된 영상 표시 및 다운로드 버튼 제공
                     st.video(video_data)
                     st.download_button(
                         label="영상 다운로드",
