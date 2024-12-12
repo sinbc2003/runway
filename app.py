@@ -25,9 +25,9 @@ def generate_video_from_text(prompt):
             "model": "gen3a_turbo"
         }
         
-        # 영상 생성 요청
+        # 영상 생성 요청 (v2 -> v1로 변경)
         response = requests.post(
-            "https://api.runwayml.com/v2/text2video",
+            "https://api.runwayml.com/v1/text2video",
             headers=headers,
             json=payload
         )
@@ -72,9 +72,9 @@ def generate_video_from_image_and_text(image, prompt):
             "model": "gen3a_turbo"
         }
         
-        # 영상 생성 요청
+        # 영상 생성 요청 (v2 -> v1로 변경)
         response = requests.post(
-            "https://api.runwayml.com/v2/image2video",
+            "https://api.runwayml.com/v1/image2video",
             headers=headers,
             json=payload
         )
