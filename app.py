@@ -19,26 +19,22 @@ def generate_video_from_text(prompt):
         }
         
         payload = {
-            "model": "gen3a_turbo",
-            "input": {
-                "prompt": prompt,
-                "num_frames": 60,
-                "fps": 30,
-            },
-            "webhook": None,
-            "async_inference": False
+            "prompt": prompt,
+            "num_frames": 300,  # 10초 영상을 위한 프레임 수 (30fps * 10초)
+            "fps": 30,
+            "model": "gen3a_turbo"
         }
         
         # 영상 생성 요청
         response = requests.post(
-            "https://api.runwayml.com/inference/text-to-video",
+            "https://api.runway.ai/v2/text2video",
             headers=headers,
             json=payload
         )
         
         if response.status_code == 200:
             result = response.json()
-            video_url = result.get('output', {}).get('video')
+            video_url = result.get('uri')
             if video_url:
                 # 생성된 영상 다운로드
                 video_response = requests.get(video_url)
@@ -69,27 +65,23 @@ def generate_video_from_image_and_text(image, prompt):
         }
         
         payload = {
-            "model": "gen3a_turbo",
-            "input": {
-                "image": f"data:image/png;base64,{base64_image}",
-                "prompt": prompt,
-                "num_frames": 60,
-                "fps": 30,
-            },
-            "webhook": None,
-            "async_inference": False
+            "image": f"data:image/png;base64,{base64_image}",
+            "prompt": prompt,
+            "num_frames": 300,  # 10초 영상을 위한 프레임 수 (30fps * 10초)
+            "fps": 30,
+            "model": "gen3a_turbo"
         }
         
         # 영상 생성 요청
         response = requests.post(
-            "https://api.runwayml.com/inference/image-to-video",
+            "https://api.runway.ai/v2/image2video",
             headers=headers,
             json=payload
         )
         
         if response.status_code == 200:
             result = response.json()
-            video_url = result.get('output', {}).get('video')
+            video_url = result.get('uri')
             if video_url:
                 # 생성된 영상 다운로드
                 video_response = requests.get(video_url)
