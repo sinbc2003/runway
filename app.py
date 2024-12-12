@@ -17,22 +17,29 @@ def generate_video_from_text(prompt):
         client = RunwayML(api_key=st.secrets['RUNWAY_API_KEY'])
         
         # 텍스트 투 비디오 태스크 생성
-        task = client.text_to_video.create(
+        task = client.create(
             model='gen3a_turbo',
-            prompt=prompt,
-            num_frames=60,
-            fps=30
+            input={
+                'prompt': prompt,
+                'num_frames': 60,
+                'fps': 30,
+                'task_type': 'text_to_video'
+            }
         )
         
         # 태스크 완료 대기 및 결과 받기
-        result = task.wait_for_completion()
-        if result.status == 'completed':
-            video_url = result.output['video']
-            # 생성된 영상 다운로드
-            video_response = requests.get(video_url)
-            return video_response.content
+        result = task.wait()
+        if result.get('status') == 'completed':
+            video_url = result.get('output', {}).get('video')
+            if video_url:
+                # 생성된 영상 다운로드
+                video_response = requests.get(video_url)
+                return video_response.content
+            else:
+                st.error("비디오 URL을 찾을 수 없습니다.")
+                return None
         else:
-            st.error(f"Error: {result.status} - {result.error}")
+            st.error(f"Error: {result.get('status')} - {result.get('error')}")
             return None
             
     except Exception as e:
@@ -42,43 +49,47 @@ def generate_video_from_text(prompt):
 def generate_video_from_image_and_text(image, prompt):
     """이미지와 텍스트로부터 영상을 생성하는 함수"""
     try:
-        # 이미지를 임시로 저장
+        # 이미지를 base64로 인코딩
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
+        base64_image = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
         
         # RunwayML 클라이언트 초기화
         client = RunwayML(api_key=st.secrets['RUNWAY_API_KEY'])
         
         # 이미지 투 비디오 태스크 생성
-        task = client.image_to_video.create(
+        task = client.create(
             model='gen3a_turbo',
-            prompt_image=img_byte_arr,
-            prompt_text=prompt,
-            num_frames=60,
-            fps=30
+            input={
+                'image': f"data:image/png;base64,{base64_image}",
+                'prompt': prompt,
+                'num_frames': 60,
+                'fps': 30,
+                'task_type': 'image_to_video'
+            }
         )
         
         # 태스크 완료 대기 및 결과 받기
-        result = task.wait_for_completion()
-        if result.status == 'completed':
-            video_url = result.output['video']
-            # 생성된 영상 다운로드
-            video_response = requests.get(video_url)
-            return video_response.content
+        result = task.wait()
+        if result.get('status') == 'completed':
+            video_url = result.get('output', {}).get('video')
+            if video_url:
+                # 생성된 영상 다운로드
+                video_response = requests.get(video_url)
+                return video_response.content
+            else:
+                st.error("비디오 URL을 찾을 수 없습니다.")
+                return None
         else:
-            st.error(f"Error: {result.status} - {result.error}")
+            st.error(f"Error: {result.get('status')} - {result.get('error')}")
             return None
             
     except Exception as e:
         st.error(f"영상 생성 중 오류가 발생했습니다: {str(e)}")
         return None
 
-# Streamlit UI
-st.title("Video Generation Chatbot")
-
-# requirements.txt에 추가해야 할 내용을 알림
-st.info("이 앱을 실행하기 위해서는 requirements.txt에 runwayml 패키지를 추가해야 합니다.")
+# Streamlit UI 부분은 이전과 동일
 
 # 탭 생성
 tab1, tab2 = st.tabs(["텍스트로 영상 생성", "이미지와 텍스트로 영상 생성"])
