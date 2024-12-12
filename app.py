@@ -5,7 +5,7 @@ from PIL import Image
 import io
 import base64
 from datetime import datetime
-from runwayml import RunwayML
+import time
 
 # Streamlit 페이지 설정
 st.set_page_config(page_title="Video Generation Chatbot", layout="wide")
@@ -13,23 +13,31 @@ st.set_page_config(page_title="Video Generation Chatbot", layout="wide")
 def generate_video_from_text(prompt):
     """텍스트 프롬프트로부터 영상을 생성하는 함수"""
     try:
-        # RunwayML 클라이언트 초기화
-        client = RunwayML(api_key=st.secrets['RUNWAY_API_KEY'])
+        headers = {
+            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}",
+            "Content-Type": "application/json",
+        }
         
-        # 텍스트 투 비디오 태스크 생성
-        task = client.create(
-            model='gen3a_turbo',
-            input={
-                'prompt': prompt,
-                'num_frames': 60,
-                'fps': 30,
-                'task_type': 'text_to_video'
-            }
+        payload = {
+            "model": "gen3a_turbo",
+            "input": {
+                "prompt": prompt,
+                "num_frames": 60,
+                "fps": 30,
+            },
+            "webhook": None,
+            "async_inference": False
+        }
+        
+        # 영상 생성 요청
+        response = requests.post(
+            "https://api.runwayml.com/inference/text-to-video",
+            headers=headers,
+            json=payload
         )
         
-        # 태스크 완료 대기 및 결과 받기
-        result = task.wait()
-        if result.get('status') == 'completed':
+        if response.status_code == 200:
+            result = response.json()
             video_url = result.get('output', {}).get('video')
             if video_url:
                 # 생성된 영상 다운로드
@@ -39,7 +47,7 @@ def generate_video_from_text(prompt):
                 st.error("비디오 URL을 찾을 수 없습니다.")
                 return None
         else:
-            st.error(f"Error: {result.get('status')} - {result.get('error')}")
+            st.error(f"Error: {response.status_code} - {response.text}")
             return None
             
     except Exception as e:
@@ -52,27 +60,35 @@ def generate_video_from_image_and_text(image, prompt):
         # 이미지를 base64로 인코딩
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        base64_image = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+        img_byte_arr = img_byte_arr.getvalue()
+        base64_image = base64.b64encode(img_byte_arr).decode('utf-8')
         
-        # RunwayML 클라이언트 초기화
-        client = RunwayML(api_key=st.secrets['RUNWAY_API_KEY'])
+        headers = {
+            "Authorization": f"Bearer {st.secrets['RUNWAY_API_KEY']}",
+            "Content-Type": "application/json",
+        }
         
-        # 이미지 투 비디오 태스크 생성
-        task = client.create(
-            model='gen3a_turbo',
-            input={
-                'image': f"data:image/png;base64,{base64_image}",
-                'prompt': prompt,
-                'num_frames': 60,
-                'fps': 30,
-                'task_type': 'image_to_video'
-            }
+        payload = {
+            "model": "gen3a_turbo",
+            "input": {
+                "image": f"data:image/png;base64,{base64_image}",
+                "prompt": prompt,
+                "num_frames": 60,
+                "fps": 30,
+            },
+            "webhook": None,
+            "async_inference": False
+        }
+        
+        # 영상 생성 요청
+        response = requests.post(
+            "https://api.runwayml.com/inference/image-to-video",
+            headers=headers,
+            json=payload
         )
         
-        # 태스크 완료 대기 및 결과 받기
-        result = task.wait()
-        if result.get('status') == 'completed':
+        if response.status_code == 200:
+            result = response.json()
             video_url = result.get('output', {}).get('video')
             if video_url:
                 # 생성된 영상 다운로드
@@ -82,14 +98,15 @@ def generate_video_from_image_and_text(image, prompt):
                 st.error("비디오 URL을 찾을 수 없습니다.")
                 return None
         else:
-            st.error(f"Error: {result.get('status')} - {result.get('error')}")
+            st.error(f"Error: {response.status_code} - {response.text}")
             return None
             
     except Exception as e:
         st.error(f"영상 생성 중 오류가 발생했습니다: {str(e)}")
         return None
 
-# Streamlit UI 부분은 이전과 동일
+# Streamlit UI
+st.title("Video Generation Chatbot")
 
 # 탭 생성
 tab1, tab2 = st.tabs(["텍스트로 영상 생성", "이미지와 텍스트로 영상 생성"])
